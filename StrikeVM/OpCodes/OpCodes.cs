@@ -10,11 +10,25 @@ namespace StrikeVM
         public static void Process(VirtualMachine vm, Instruction i) {
 
             
-            if (vm.CodeBlocksBeingDefined.Count() > 0 && i.Type != OpCodeTypes.END_BLOCK && i.Type != OpCodeTypes.END_CLOSURE) {
-                // The opcode being processed should not be executed; it's inside a 
-                // definition region for a code block or closure.
-                vm.ByteCode.ProgramCounter++;
-                return;
+            if (vm.CodeBlockBeingDefined != null) { // We're scanning this opcode as the text of a codeblock, not for execution
+                // We've encountered a close command without having processing a start command as text. We want to process
+                // this as an opcode.
+                if (vm.CodeBlocksAsText == 0 && (i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_CLOSURE)) {
+                    // Just making the logic clear; do nothing and fall through to the switch monster
+                } else {
+                    // Increment the number of codeblocks we've encountered as text
+                    if (i.Type == OpCodeTypes.START_BLOCK || i.Type == OpCodeTypes.START_CLOSURE) {
+                        vm.CodeBlocksAsText++;
+                    }
+                    // Decrement the number of encountered codeblocks
+                    if ((i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_CLOSURE) && vm.CodeBlocksAsText > 0) {
+                        vm.CodeBlocksAsText--;
+                    }
+                    // The opcode being processed should not be executed; it's inside a 
+                    // definition region for a code block or closure.
+                    vm.ByteCode.ProgramCounter++;
+                    return;
+                }
             }
             switch (i.Type) {
                 case OpCodeTypes.DEBUG:
@@ -186,6 +200,7 @@ namespace StrikeVM
                     vm.Ticks++;
                     break;
 
+/***************************
                 case OpCodeTypes.TYPELET:
                 case OpCodeTypes.LET:
                     OpCodes.Let(vm,i);
@@ -193,6 +208,7 @@ namespace StrikeVM
                     vm.Ticks++;
                     vm.CurrentEnvironment.Memory++;
                     break;
+***************************/
 
                 case OpCodeTypes.DUPE:
                     OpCodes.Dupe(vm, i);
@@ -200,6 +216,7 @@ namespace StrikeVM
                     vm.Ticks++;
                     break;
 
+/***********************
                 case OpCodeTypes.TYPELETSET:
                 case OpCodeTypes.LETSET :
                     OpCodes.LetSet(vm, i);
@@ -207,7 +224,7 @@ namespace StrikeVM
                     vm.Ticks++;
                     vm.CurrentEnvironment.Memory++;
                     break;
-
+***********************/
                 case OpCodeTypes.NEW:
                     OpCodes.CreatePrototype(vm, i);
                     vm.ByteCode.ProgramCounter++;
@@ -340,6 +357,12 @@ namespace StrikeVM
 
                 case OpCodeTypes.ARRAY_SET:
                     OpCodes.ArraySet(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.STRING_SPLICE:
+                    OpCodes.SpliceString(vm, i);
                     vm.ByteCode.ProgramCounter++;
                     vm.Ticks++;
                     break;
@@ -603,6 +626,9 @@ namespace StrikeVM
         /// <param name="vm"></param>
         /// <param name="i"></param>
         internal static void StartBlock(VirtualMachine vm, Instruction i) {
+            if (vm.CodeBlockBeingDefined != null) {
+                throw new Exception("VM Error: Code block already being defined.");
+            }
             CodeBlock call = new CodeBlock();
             foreach (Value v in i.Args) {
                 call.ArgumentsArity.Add(v);
@@ -615,12 +641,12 @@ namespace StrikeVM
                 call.Closure = env;
             }
 
-            vm.PushCodeBlockForDefinition(call);
+            vm.CodeBlockBeingDefined = call;
         }
 
         internal static void EndBlock(VirtualMachine vm, Instruction i) {            
-            CodeBlock call = vm.CodeBlocksBeingDefined.Last();
-            vm.CodeBlocksBeingDefined.RemoveAt(vm.CodeBlocksBeingDefined.Count() - 1);
+            CodeBlock call = vm.CodeBlockBeingDefined;
+
             if (i.Type == OpCodeTypes.END_CLOSURE && call.Closure == null) {
                 vm.RaiseError("Tried to end a closure with a null environment.");
                 return;
@@ -630,6 +656,7 @@ namespace StrikeVM
             }
             call.EndProgramCounter = vm.ByteCode.ProgramCounter-1;
             Value block = Value.New(ValueTypes.CODE_BLOCK, call);
+            vm.CodeBlockBeingDefined = null;
             vm.Stack.Push(block);
         }
 
@@ -1097,24 +1124,70 @@ namespace StrikeVM
             Value vArray = vm.Stack.Shift();
             Value vValue = vm.Stack.Shift();
 
-            if (vArray.Type != ValueTypes.ARRAY) {
-                vm.RaiseError("Tried to index get a non-array type " + vArray.Type);
+            if (vArray.Type != ValueTypes.ARRAY && vArray.Type != ValueTypes.STRING) {
+                vm.RaiseError("Tried to index set a non-array and non-string type " + vArray.Type);
                 return;
             }
 
             if (vIndex.IsNumeric() == false || vIndex.Type == ValueTypes.FLOAT || vIndex.Type == ValueTypes.DOUBLE || vIndex.Type == ValueTypes.DECIMAL) {
-                vm.RaiseError("Tried to index get an array with a non-integer type " + vIndex.Type);
+                vm.RaiseError("Tried to index gsetet an array or string with a non-integer type " + vIndex.Type);
                 return;
             }
 
             Int32 index = Convert.ToInt32(vIndex.Get());
-            if (index >= vArray.Array_Value.Count()) {
-                vm.RaiseError("Tried to set index " + index + " on an array of max index " + (vArray.Array_Value.Count()-1) );
-                return;
+
+            if (vArray.Type == ValueTypes.ARRAY) {
+                if (index >= vArray.Array_Value.Count()) {
+                    vm.RaiseError("Tried to set index " + index + " on an array of max index " + (vArray.Array_Value.Count() - 1));
+                    return;
+                }
+                vArray.Array_Value[index] = vValue;
+            } else if (vArray.Type == ValueTypes.STRING) {
+                if (index > vArray.String_Value.Count()) {
+                    vm.RaiseError("Tried to set index " + index + " on a string of max index " + (vArray.Array_Value.Count() - 1));
+                    return;
+                }
+                String tmpStr = vArray.String_Value.Substring(0, index);
+                tmpStr = tmpStr + vValue.String_Value[0];
+                tmpStr = tmpStr + vArray.String_Value.Substring(index + 1);
+                vArray.String_Value = tmpStr;
             }
-            vArray.Array_Value[index] = vValue;              
             vm.Stack.Push(vArray);
             return;
+        }
+
+        internal static void SpliceString(VirtualMachine vm, Instruction i) {
+            Value vIndex = vm.Stack.Shift();
+            Value vArray = vm.Stack.Shift();
+            Value vValue = vm.Stack.Shift();
+
+            if (vArray.Type != ValueTypes.STRING) {
+                vm.RaiseError("Tried to splice a non-string type " + vArray.Type);
+                return;
+            }
+
+            if (vIndex.IsNumeric() == false || vIndex.Type == ValueTypes.FLOAT || vIndex.Type == ValueTypes.DOUBLE || vIndex.Type == ValueTypes.DECIMAL) {
+                vm.RaiseError("Tried to splice a string with a non-integer type " + vIndex.Type);
+                return;
+            }
+
+            Int32 index = Convert.ToInt32(vIndex.Get());
+
+            if (index > vArray.String_Value.Count()) {
+                vm.RaiseError("Tried to splice index " + index + " on a string of max index " + (vArray.Array_Value.Count() - 1));
+                return;
+            }
+
+            String tmpStr = "";
+            if (index == 0) {
+                tmpStr = vValue.Get().ToString() + vArray.String_Value;
+            } else if (index == vArray.String_Value.Count()) {
+                tmpStr = vArray.String_Value + vValue.Get().ToString();
+            } else {
+                tmpStr = vArray.String_Value.Substring(0, index) + vValue.String_Value + vArray.String_Value.Substring(index);
+            }
+            vArray.String_Value = tmpStr;
+            vm.Stack.Push(vArray);
         }
 
         /// <summary>
@@ -1127,8 +1200,8 @@ namespace StrikeVM
             Value vIndex = vm.Stack.Shift();
             Value vArray = vm.Stack.Shift();
 
-            if (vArray.Type != ValueTypes.ARRAY) {
-                vm.RaiseError("Tried to index get a non-array type " + vArray.Type);
+            if (vArray.Type != ValueTypes.ARRAY && vArray.Type != ValueTypes.STRING) {
+                vm.RaiseError("Tried to index get a non-array and non-string type " + vArray.Type);
                 return;
             }
 
@@ -1138,7 +1211,18 @@ namespace StrikeVM
             }
 
             Int32 index = Convert.ToInt32(vIndex.Get());
-            Value v = vArray.Array_Value[index];
+            Value v = new Value();
+            if (vArray.Type == ValueTypes.ARRAY) {
+                if (index >= vArray.Array_Value.Count()) {
+                    vm.RaiseError("Tried to get index " + index + " on an array of max index " + (vArray.Array_Value.Count() - 1));
+                }
+                v = vArray.Array_Value[index];
+            } else if (vArray.Type == ValueTypes.STRING) {
+                if (index >= vArray.String_Value.Count()) {
+                    vm.RaiseError("Tried to get index " + index + " on a string of max index " + (vArray.Array_Value.Count() - 1));
+                }
+                v = Value.New(ValueTypes.STRING, vArray.String_Value[index]);
+            }
             vm.Stack.Push(v);
             return;
         }
@@ -1202,19 +1286,24 @@ namespace StrikeVM
                 return;
             }
 
-            if (vm.Exists(vName.String_Value) == false) {
-                vm.RaiseError("Tried to set undefined value " + vName.String_Value);
-                return;
+            Environment e = vm.CurrentEnvironment;
+            while (e != null) {
+                if (e.Exists(vName.String_Value)) {
+                    break;
+                }
+                e = e.Parent;
             }
-            
-            if (i.Type == OpCodeTypes.TYPESET) {
-                if (vm.Get(vName.String_Value).Type != vValue.Type) {
-                    vm.RaiseError("Tried to redefine type for variable " + vName.String_Value + ": value is " + vm.Get(vName.String_Value).Type + ", new value is " + vValue.Type);
-                    return;
+            if (e == null) {
+                e = vm.CurrentEnvironment;
+            } else {
+                if (i.Type == OpCodeTypes.TYPESET) {
+                    if (e.Get(vName.String_Value).Type != vValue.Type) {
+                        vm.RaiseError("Tried to redefine type for variable " + vName.String_Value + ": value is " + vm.Get(vName.String_Value).Type + ", new value is " + vValue.Type);
+                        return;
+                    }
                 }
             }
-
-            vm.Set(vName.String_Value, vValue);
+            e.Set(vName.String_Value, vValue);
             vm.Stack.Push(vName);
         }
 
@@ -1277,6 +1366,9 @@ namespace StrikeVM
             vm.Stack.Push(vVal);
         }
 
+
+/**** Removed due to needless duplication of effort. SET handles this. Languages can use EXIST and TYEPSET if they don't want to redefine values. ****/
+/********************************************
         /// <summary>
         /// type, name (end) | name (end)
         /// </summary>
@@ -1322,6 +1414,7 @@ namespace StrikeVM
             vm.Set(vName.String_Value, vType); 
             vm.Stack.Push(vName);
         }
+***********************/
 
         internal static void Push(VirtualMachine vm, Instruction i) {
             for (int x = 0; x < i.Args.Count(); x++) {

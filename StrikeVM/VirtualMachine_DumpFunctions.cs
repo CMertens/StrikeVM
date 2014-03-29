@@ -7,6 +7,7 @@ namespace StrikeVM {
     public partial class VirtualMachine {
 
         public void DumpOperation(System.IO.TextWriter tw) {
+            tw.WriteLine("State: " + this.State);
             tw.WriteLine("PC: " + this.ByteCode.ProgramCounter);
             String op = "Operation: ";
             op = op + this.ByteCode.CurrentInstruction.Type + "(";

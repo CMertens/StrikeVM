@@ -34,8 +34,8 @@ namespace StrikeConsole {
             
             // We've actually run a full cycle here, but this
             // indicates 
-            while (vm.CanBeRestarted) {
-                if (vm.IsDebugging) {
+            while (vm.CanBeRestarted || vm.IsAborted) {
+                if (vm.IsDebugging || vm.IsAborted) {
                     Console.WriteLine("Debug mode at PC " + vm.ProgramCounter + " (" + vm.DebugText + ")");
                     bool debugMode = true;
                     while (debugMode) {
@@ -54,6 +54,7 @@ E/RR/ORS: Dump errors, if any.
 P/RIM/ITIVES: Dump primitives.
 Q/UIT: Quit.
 S/TACK: Dump the stack.
+STAT/US: Dump status.
 ");
                                 
                                 break;
@@ -61,6 +62,10 @@ S/TACK: Dump the stack.
                             case "Q":
                             case "QUIT":
                                 System.Environment.Exit(111);
+                                break;
+                            case "STAT":
+                            case "STATUS":
+                                vm.DumpOperation(Console.Out);
                                 break;
                             case "CLO":
                             case "CLOSURES":

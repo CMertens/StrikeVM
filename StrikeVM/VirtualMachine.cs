@@ -39,7 +39,8 @@ namespace StrikeVM {
 
         // When processing text, if we encounter a code block or closure start,
         // we keep state during its definition in this list.
-        internal List<CodeBlock> CodeBlocksBeingDefined;
+        internal CodeBlock CodeBlockBeingDefined;
+        internal int CodeBlocksAsText = 0;
 
         internal long Ticks = 0;
         internal long KillTickLimit = -1;
@@ -142,7 +143,6 @@ namespace StrikeVM {
             PrimitivesArity = new Dictionary<string, List<Value>>();
             Environments = new List<Environment>();
             ClosureStack = new List<Environment>();
-            CodeBlocksBeingDefined = new List<CodeBlock>();
             Environments.Add(CurrentEnvironment);
         }
 
@@ -161,17 +161,12 @@ namespace StrikeVM {
 
             Environments = new List<Environment>();
             ClosureStack = new List<Environment>();
-            CodeBlocksBeingDefined = new List<CodeBlock>();
             Environments.Add(CurrentEnvironment);
         }
 
         public void AddPrimitive(String name, Action<VirtualMachine, Instruction, List<Value>> primitive, List<Value> argTypes){
             this.Primitives.Add(name, primitive);
             this.PrimitivesArity.Add(name, argTypes);
-        }
-
-        internal void PushCodeBlockForDefinition(CodeBlock block) {
-            CodeBlocksBeingDefined.Add(block);
         }
 
         public void Start() {

@@ -57,19 +57,17 @@ namespace StrikeVM {
         /// </summary>
         SET = 61,
 
-        /// <summary>
-        /// 
-        /// </summary>
+        /****************
         LET = 62,
 
         LETSET = 63,
-
+        ****************/
         TYPESET = 64,
-
+        /****************
         TYPELET = 65,
 
         TYPELETSET = 66,
-
+        ****************/
         /// <summary>
         /// Attempts to get a variable in the current or all parent environments. Useful for closures.
         /// </summary>
@@ -176,6 +174,8 @@ namespace StrikeVM {
         /// (value) (array) (index) (end) | (array) (end)
         /// </summary>
         ARRAY_SET = 203,
+
+        STRING_SPLICE = 204,
 
         /// <summary>
         /// Pushes a return address onto the return stack, using arg[0] as a relative offset.

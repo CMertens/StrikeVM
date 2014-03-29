@@ -6,6 +6,7 @@ using StrikeVM;
 
 namespace StrikeConsole {
     class BuiltIns {
+        /*
         static List<Instruction> CreateStackExample() {
             List<Instruction> bc = new List<Instruction>();
             bc.Add(new Instruction(OpCodeTypes.PUSH, Value.New(ValueTypes.INT_32)));
@@ -187,5 +188,6 @@ namespace StrikeConsole {
 
             return bc;
         }
+         * */
     }
 }
