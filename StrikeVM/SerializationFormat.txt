@@ -1,0 +1,52 @@
+﻿LOGICAL FORMAT
+VM
+	State
+	Ticks
+	KillTickLimit
+	SleepTickLimit
+	@Features
+		@Tuple+
+			Key
+			Value
+	@Requirements
+		@Tuple+
+			Key
+			Value
+	@Globals
+		@Binding+
+			Name
+			@Value
+	@Environment
+		ID
+		ParentID
+		Memory
+		@Frame
+			@Binding+
+				Name
+				@Value
+		@Stack
+			@Value+
+		@Objects
+			ID+
+		@Prototypes
+			@Prototype+
+				ID
+				ParentEnvironment
+				ParentObjectID
+				@Binding+
+					Name
+					@Value
+	@ByteCode
+		@Instruction
+			OpCode
+			@Value+
+			
+BINARY
+All binary serializations are network-order (big-endian).
+FIELD CODE:
+	111 : VM
+	122: FEATURE
+	133: REQUIREMENT
+	144: GLOBAL
+	222: ENVIRONMENT
+	

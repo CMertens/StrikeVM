@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrikeVM", "StrikeVM\StrikeVM.csproj", "{35561843-0BC6-490A-A070-E635BC538DC5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrikeConsole", "StrikeConsole\StrikeConsole.csproj", "{035D96CC-8538-46F5-BE19-FC1D933E228C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrikeAsm", "StrikeAsm\StrikeAsm.csproj", "{5041BF5A-8E09-48B8-A70A-6F8B6A432E40}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{35561843-0BC6-490A-A070-E635BC538DC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35561843-0BC6-490A-A070-E635BC538DC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35561843-0BC6-490A-A070-E635BC538DC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35561843-0BC6-490A-A070-E635BC538DC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{035D96CC-8538-46F5-BE19-FC1D933E228C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{035D96CC-8538-46F5-BE19-FC1D933E228C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{035D96CC-8538-46F5-BE19-FC1D933E228C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{035D96CC-8538-46F5-BE19-FC1D933E228C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5041BF5A-8E09-48B8-A70A-6F8B6A432E40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5041BF5A-8E09-48B8-A70A-6F8B6A432E40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5041BF5A-8E09-48B8-A70A-6F8B6A432E40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5041BF5A-8E09-48B8-A70A-6F8B6A432E40}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

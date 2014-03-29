@@ -1,0 +1,45 @@
+﻿
+// Demonstrates labels and labeled jumps
+JUMP_LABEL		String:"JumpHere"
+PUSH			String:"HIDDEN"
+DEBUG			String:"This should never be seen"
+LABEL			String:"JumpHere"
+PUSH			String:"NOT HIDDEN"
+DEBUG
+HALT
+
+
+// Basic function example
+START_BLOCK		// No arguments for this function
+PUSH			String:"This is a return value"
+RETURN
+END_BLOCK
+DEBUG			String:"Code block created"
+// Push a new variable name onto the stack and LETSET it to the CodeBlock
+PUSH			String:"MyFunction"
+LETSET
+GET
+SET_RETURN		Int32:2
+CALL_FUNCTION
+// Return value is on the stack, so let's LETSET x to it.
+PUSH			String:"x"
+DEBUG			String:"Ready to bind x"
+LETSET
+DEBUG			String:"Bound return value to x"
+GET
+DEBUG			String:"This is the return value, bound to local x"
+HALT
+
+
+// Create object example
+NEW
+PUSH			String:"MyObj"
+LETSET
+POP
+PUSH			Int64:1000000
+PUSH			String:"MyObj"
+GET
+PUSH			String:"MyProperty"
+SETPROP
+DEBUG
+HALT

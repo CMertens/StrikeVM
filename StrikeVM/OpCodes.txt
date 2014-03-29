@@ -1,0 +1,252 @@
+﻿
+
+POP: Pop a value off the stack.
+a (end) | (end)
+<?> (end) | (end)
+
+
+
+PUSH: Push a value onto the stack.
+(end) | a (end)
+
+DEBUG:
+
+ASSERT:
+
+BREAK:
+
+SET_RETURN_ADDRESS: Pushes a return address, optionally with the current PC, onto the stack. System calls don't require
+                    return addresses, whereas code blocks do.
+(end) | a (end)
+(end) | <return-address> (end)
+
+START_CODE_BLOCK: Creates a CodeBlock record with the PC and the name.
+
+END_CODE_BLOCK: Completes a CodeBlock.
+
+
+LABEL: Used only when using a labeled jump (useful for debugging and testing, but less optimized than a regular jump).
+(end) | (end)
+
+POP_CODE_BLOCK:
+
+CALL: Calls a core or implementation-defined syscall, or function with the name 'n', zero or more arguments (where the first 
+	  argument is below the function name, the second below that, and so on), and a return. If a syscall or function 
+	  cannot be found with the given name (in the current or parent frame in the function's case), or the number of arguments 
+	  cannot be bound, then a SyscallNotFound, FunctionNotFound, or ArityNotFound error will be returned. The result of the 
+	  syscall or function is placed on the stack, and the PC is set to the return address' PC, if one exists.
+a (...) n (end) | x (end)
+<return> <?>* <string> | <?> (end)
+
+CALL_RETURN: Indicates the end of the arguments for a call.
+
+
+LET: Create a new locally-bound variable of name 'b' and type 'a', where 'a' is a string value 
+     where the value is a string representation of the desired type. Leaves the variable name
+	 on the stack.
+a b (end) | b (end)
+<?> <string> (end) | <string> (end)
+
+GET: Gets the value of locally-bound variable of name 'a' and leaves the value on the stack. If the variable cannot be found
+     in the current frame, it will check the adjacent parent frame for the variable.
+a (end) | b (end)
+<string> (end) | <?> (end)
+
+SET: Set the locally-bound variable of name 'b' and value 'a'. Leaves the variable name on the stack.
+a b (end) | b (end)
+<?> <string> (end) | <string> (end)
+
+SWAP: Swap the top two values in the stack.
+a b (end) | b a (end)
+<?> <?> (end) | <?> <?> (end)
+
+JUMP:
+
+FALSE_JUMP:
+
+TRUE_JUMP:
+
+JUMP_LABEL:
+
+FALSE_JUMP_LABEL:
+
+TRUE_JUMP_LABEL:
+
+CREATE_FUNCTION:
+
+ARGUMENTS:
+
+ADD:
+a b (end) | a+b (end)
+<number> <number> (end) | <number> (end)
+
+SUBTRACT:
+a b (end) | a-b (end)
+<number> <number> (end) | <number> (end)
+
+MULTIPLY:
+a b (end) | a*b (end)
+<number> <number> (end) | <number> (end)
+
+DIVIDE:
+a b (end) | a/b (end)
+<number> <number> (end) | <number> (end)
+
+MODULO:
+a b (end) | a%b (end)
+<number> <number> (end) | <number> (end)
+
+POW:
+a b (end) | a^b (end)
+<number> <number> (end) | <number> (end)
+
+IS_EQ:
+a b (end) | a == b (end)
+<?> <?> (end) | <boolean> (end)
+
+IS_NEQ:
+a b (end) | a != b (end)
+<?> <?> (end) | <boolean> (end)
+
+IS_GT:
+a b (end) | a > b (end)
+<?> <?> (end) | <boolean> (end)
+
+IS_LT:
+a b (end) | a < b (end)
+<?> <?> (end) | <boolean> (end)
+
+
+IS_GTE:
+a b (end) | a >= b (end)
+<?> <?> (end) | <boolean> (end)
+
+IS_LTE:
+a b (end) | a <= b (end)
+<?> <?> (end) | <boolean> (end)
+
+GET_REFERENCE:
+
+ARRAY_PUSH:
+a b (end) | b (end)
+<?> <array> | <array> (end)
+
+GET_REFERENCE_WITH_DOT:
+
+SET_REFERENCE_WITH_DOT:
+
+REFERENCE_PUSH:
+
+UNARY_DECREMENT:
+
+UNARY_INCREMENT:
+
+SHIFT_LEFT:
+
+SHIFT_RIGHT:
+
+POWER:
+
+FLOOR:
+
+CEILING:
+
+LOGICAL_NOT:
+
+BITWISE_AND:
+
+BITWISE_OR:
+
+BITWISE_XOR:
+
+GET_KEYS:
+
+HAS_KEY:
+
+ARRAY_POP:
+
+SET_INDEXED:
+
+GET_INDEXED:
+
+GET_LENGTH:
+
+IS_*:
+
+DELETE_REFERENCE:
+
+INVERT:
+
+NOP: 
+
+
+
+
+
+
+/// <summary>
+        /// Converts value 'b' to the type of value 'a'.
+        /// a,b (end) - b_as_a (end)
+        /// </summary>
+        CONVERT,
+
+        PUSH_STRING,
+        PUSH_INT16,
+        PUSH_INT32,
+        PUSH_INT64,
+        PUSH_UINT16,
+        PUSH_UINT32,
+        PUSH_UINT64,
+        PUSH_BYTE,
+        PUSH_BOOLEAN,
+        PUSH_ARRAY,
+        PUSH_PROTOTYPE,
+        PUSH_STRUCT,
+        PUSH_HASH,
+
+        ARRAY_PUSH,
+        ARRAY_POP,
+        ARRAY_GET,
+        ARRAY_SET,
+
+        PROPERTY_SET,
+        PROPERTY_GET,
+        PROPERTY_TEST,
+
+        CALL_BUILT_IN,
+        CALL_CODE_BLOCK,
+
+        RETURN,
+
+        LABEL,
+
+        JUMP,
+        JUMP_LABEL,
+        TRUE_JUMP,
+        TRUE_JUMP_LABEL,
+        FALSE_JUMP,
+        FALSE_JUMP_LABEL,
+
+        IS_TRUE,
+        IS_FALSE,
+        IS_EQUAL,
+        IS_NOT_EQUAL,
+        IS_GT,
+        IS_GTE,
+        IS_LT,
+        IS_LTE,
+
+        /// <summary>
+        /// The return address is at the bottom of the stack section, then the arguments in reverse order, then the call opcode.
+        /// e(d,c,b) return a == 
+        /// a,b,c,d,e (end) -- return (end)
+        /// </summary>
+        ADD_RETURN_ADDRESS,
+
+        START_CODE_BLOCK,
+        POP_CODE_BLOCK,
+
+        LOG,
+        DEBUG,
+        BREAK,
+        HALT

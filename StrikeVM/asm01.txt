@@ -1,0 +1,174 @@
+﻿let x :: <int>;
+let y :: <string> = "Hello, World!";
+set x = <core.length>(y);
+
+
+PUSH '<int>'			// '<int>' (end)
+PUSH 'x'				// '<int>' 'x' (end)
+LET						// 'x' (end)
+POP						// (end)
+PUSH '<string>'			// '<string>' (end)
+PUSH 'y'				// '<string>' 'y' (end)
+LET						// 'y' (end)
+PUSH "Hello, World!"	// 'y' 'Hello, World!' (end)
+											// we have var, val (end); SET needs val, var (end)
+SWAP					// 'Hello, World!' 'y' (end)
+SET						// 'y' (end)
+POP						// (end)
+SET_RETURN_ADDRESS		// RETURN_ADDRESS (end)
+PUSH 'y'				// RETURN_ADDRESS 'y' (end)
+GET						// RETURN_ADDRESS 'Hello, World!' (end)
+PUSH '<core.length>'	// RETURN_ADDRESS 'Hello, World!' '<core.length>' (end)
+CALLP					// 14 (end)
+PUSH 'x'				// 14 'x' (end)
+SET						// 'x' (end)
+POP						// (end)
+
+
+
+
+
+
+/*
+let fn :: <function> = function(x :: <int>, y :: <int>){
+	let z :: <int> = 1;
+	while( x > 0){
+		set z = z * (x + y);
+		set x = x - 1;
+	}
+	z;
+}
+let fn_res :: <int> = fn(10,10);
+
+*/
+
+PUSH 'fn'
+PUSH '<function>'
+LET
+POP
+START_CODE_BLOCK null			// 
+ARG x,<int>
+ARG y,<int>
+PUSH 'z'
+PUSH '<int>'
+LET
+POP
+PUSH 'z'
+PUSH 1
+SET
+POP
+LABEL 'start-while'
+PUSH 'x'
+GET
+PUSH 0
+LT
+F_JUMP_LABEL 'after-while'
+JUMP_LABEL 'start-while'
+LABEL 'after-while'
+PUSH 'z'
+GET
+END_CODE_BLOCK
+PUSH 'fn'
+SET
+PUSH 'fn_res'
+PUSH '<int>'
+LET
+POP
+CALL_RETURN
+PUSH 10
+PUSH 10
+PUSH 'fn'
+CALL
+PUSH 'fn_res'
+SET
+
+
+
+// x = 45, y = 5, z = 25, getValue = z+10
+set t = x == (2 * y + getValue(z));
+
+
+END_CODE_BLOCK			// (end)
+/* the arg appears in a new stack frame that has the current environment as parent */
+// (end)
+PUSH 'val'			// 'val' (end)
+PUSH '<int>'		// 'val' '<int>' (end)
+LET					// 'val' (end)
+SET					// We assume the arg is already on the stack when the call is made
+GET					//  val_of_val (end)
+PUSH 10				// val_of_val 10 (end)
+/* The result of the ADD will be returned. */
+ADD					// val_plus_10 (end)
+CREATE_CODE_BLOCK
+LABEL 'done'
+PUSH 2				// 1 (end)
+PUSH 'y'			// 1 'y' (end)
+GET 				// 1 5 (end)
+MULT				// 10 (end)
+CALL_RETURN			// 10 RETURN (end)
+PUSH 'z'			// 10 RETURN 'z' (end)
+GET 				// 10 RETURN 25 (end)
+PUSH 'getValue'		// 10 RETURN 25 'getValue' (end)
+/*	CALLP will reduce out the arguments until it finds a RETURN. Keep the RETURN on the stack until you return, 
+	then replace RETURN with the return value and jump to PC if appropriate. */
+CALL				// 10 35 (end)
+ADD					// 45 (end)
+PUSH 'x'			// 45 'x' (end)
+GET 				// 45 45 (end)
+EQ					// true (end)
+PUSH 't'			// true 't' (end)
+SET					// 't' (end)
+POP					// (end)
+
+/////////////////////////////////////////////////////
+
+define prototype <Person> {
+	field FirstName :: <string> = empty;
+	field LastName :: <string> = empty;
+	field GetFullName :: <function> = function(){
+		this.FirstName + " " + this.LastName;
+	};
+};
+
+let me :: <Person>;
+set me.FirstName = "John";
+set me.LastName = "Smith";
+<log.Info>(txt:me.GetFullName());
+
+
+//
+END_CLASS			// END_CLASS (end)
+PUSH 'FirstName'	// END_CLASS 'FirstName' (end)
+PUSH '<string>'		// END_CLASS 'FirstName' '<string>'
+PUSH empty
+SET_FIELD
+PUSH 'LastName'		
+PUSH '<string>'
+PUSH empty
+SET_FIELD
+PUSH 'GetFullName'
+PUSH '<function>'
+END_CODE_BLOCK
+// ...
+CREATE_CLASS
+
+
+
+// MyFunction = function(){...}
+START_BLOCK Int32,Int32,Int32	// Continue until END_BLOCK
+RETURN
+END_BLOCK
+PUSH 'MyFunction'
+LETSET
+// MyFunction(0,1,2,3);
+PUSH arg_0 
+PUSH arg_1
+PUSH arg_2
+PUSH arg_3 // 0,1,2,3 (
+SET_RETURN 1
+PUSH 'MyFunction'
+GET
+CALL 
+PUSH 'retVal'
+LETSET
+HALT
