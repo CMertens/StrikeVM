@@ -1,0 +1,15 @@
+PUSH	String:"test_out.txt";
+PUSH	String:"<IO.File.OpenForWriting>";
+CALL_PRIMITIVE;
+PUSH	String:"FileHandle";
+SET;
+GET;
+PUSH	String:": This is a test, this is only a test.";
+CLOCK_UTC_TICKS;
+APPEND_RANGE;
+SWAP;
+PUSH	String:"<IO.File.Write>";
+CALL_PRIMITIVE;
+PUSH	String:"<IO.File.Close>";
+CALL_PRIMITIVE;
+HALT;
