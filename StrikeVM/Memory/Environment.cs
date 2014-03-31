@@ -121,7 +121,7 @@ namespace StrikeVM {
 
         public void Set(String name, Value val) {
             Variables[name] = val;
-        }       
+        }
 
         public Value Get(String name) {
             return Variables[name];

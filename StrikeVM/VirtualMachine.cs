@@ -175,6 +175,13 @@ namespace StrikeVM {
             Run();
         }
 
+        public void Collect() {
+            // Stop-the-world GC for picking up unused environments and prototypes
+            List<int> envs = new List<int>();   // Track down closed environments that no longer have codeblock closures
+            Dictionary<int, List<int>> prots = new Dictionary<int, List<int>>();    // Look for prototypes without objectreferences
+
+        }
+
         public void Run() {
             ContinueExecution = true;
             while (ByteCode.IsValidInstruction && ContinueExecution) {

@@ -200,6 +200,19 @@ namespace StrikeVM
                     vm.Ticks++;
                     break;
 
+                case OpCodeTypes.SET_VAR:
+                case OpCodeTypes.TYPESET_VAR:
+                    OpCodes.SetVar(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.GET_VAR:
+                    OpCodes.GetVar(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
 /***************************
                 case OpCodeTypes.TYPELET:
                 case OpCodeTypes.LET:
@@ -252,6 +265,12 @@ namespace StrikeVM
 
                 case OpCodeTypes.GETPROP:
                     OpCodes.GetPrototypeProperty(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.DELETEPROP:
+                    OpCodes.DeletePrototypeProperty(vm, i);
                     vm.ByteCode.ProgramCounter++;
                     vm.Ticks++;
                     break;
@@ -388,6 +407,12 @@ namespace StrikeVM
                 case OpCodeTypes.TYPESET_REF:
                 case OpCodeTypes.SET_REF:
                     OpCodes.SetReference(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.DELETE:
+                    OpCodes.Delete(vm, i);
                     vm.ByteCode.ProgramCounter++;
                     vm.Ticks++;
                     break;
@@ -533,8 +558,8 @@ namespace StrikeVM
         /// to parent scope and the latter will attempt to return context to saved scope. Mixing up the two will
         /// cause memory corruption and probable execution failure.
         /// 
-        /// Note that we push arguments for a call from 0...n (end), because we shift them and move them to the 
-        /// new stack, where they will be removed in LIFO order.
+        /// Note that we push arguments for a call from n...0 (end), and recovered the same way, as we shift them and 
+        /// move them to the new stack, where they will be removed in LIFO order.
         /// </summary>
         /// <param name="vm"></param>
         /// <param name="i"></param>
@@ -568,7 +593,7 @@ namespace StrikeVM
             }
             foreach (Value v in callable.CodeBlock_Value.ArgumentsArity) {
                 Value arg = vm.Stack.Shift();
-                if (arg.Type != ValueTypes.ANY_TYPE && arg.Type != v.Type) {
+                if (v.Type != ValueTypes.ANY_TYPE && arg.Type != v.Type) {
                     vm.RaiseError("Argument arity error: expected type " + arg.Type + ", saw " + v.Type);
                     return;
                 }
@@ -668,7 +693,8 @@ namespace StrikeVM
         /// <param name="vm"></param>
         /// <param name="i"></param>
         internal static void Dupe(VirtualMachine vm, Instruction i) {
-            throw new NotImplementedException();
+            Value v = vm.Stack.Peek();
+            vm.Stack.Push(v.Dupe());
         }
 
         /// <summary>
@@ -798,8 +824,14 @@ namespace StrikeVM
             vm.Stack.Push(Value.New(ValueTypes.BOOLEAN, (a.IsNumeric() && b.IsNumeric())));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
         internal static void IsType(VirtualMachine vm, Instruction i) {
             Value a = vm.Stack.Shift();
+
             if (i.Args.Count() < 1) {
                 vm.RaiseError("Attempted to static compare types with no arguments");
                 return;
@@ -889,6 +921,43 @@ namespace StrikeVM
             vm.Stack.Push(refc);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
+        internal static void DeletePrototypeProperty(VirtualMachine vm, Instruction i) {
+            Value propName = vm.Stack.Shift();
+            Value refc = vm.Stack.Shift();
+
+            if (propName.Type != ValueTypes.STRING || propName.String_Value == null || propName.String_Value == "") {
+                vm.RaiseError("Tried to delete a property without a string value");
+            }
+            if (refc.Type != ValueTypes.OBJECT) {
+                vm.RaiseError("Tried to delete a property on something other than an object reference.");
+            }
+            
+            ObjectReference reference = refc.ObjectReference_Value;
+
+            Prototype p = reference.Home.Prototypes[reference.Home.Objects[reference.Index]];
+            while (p != null) {
+                if (p.ContainsKey(propName.String_Value)) {
+                    p.Remove(propName.String_Value);
+                } else {
+                    if (p.Parent == null) {
+                        p = null;
+                    } else {
+                        p = p.Parent.Prototypes[p.Parent.Objects[p.ParentIndex]];
+                    }
+                }
+            }
+            if (p == null) {
+                vm.RaiseError("Tried to remove nonexistent property " + propName.String_Value);
+                return;
+            }
+
+            vm.Stack.Push(refc);
+        }
 
         internal static Value ReturnProperty(VirtualMachine vm, Value refc, Value propName) {
             Value val = Value.New(ValueTypes.NULL);
@@ -1006,6 +1075,28 @@ namespace StrikeVM
             Value val = vm.CurrentEnvironment.Get(name.String_Value);
             vm.Stack.Push(val);            
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
+        internal static void Delete(VirtualMachine vm, Instruction i) {
+            Value name = vm.Stack.Shift();
+            if (name.Type != ValueTypes.STRING || name.String_Value == null || name.String_Value == "") {
+                vm.RaiseError("Tried to access a bound value with a non-string name");
+                return;
+            }
+            Environment cEnv = vm.CurrentEnvironment;
+            while (cEnv != null) {
+                if (cEnv.Exists(name.String_Value)) {
+                    cEnv.Variables.Remove(name.String_Value);
+                }
+            }
+            vm.RaiseError("Could not find variable " + name.String_Value + " in any environment");
+            return;
+        }
+
 
         /// <summary>
         /// 
@@ -1272,6 +1363,76 @@ namespace StrikeVM
                      return;
             }
             
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
+        internal static void GetVar(VirtualMachine vm, Instruction i) {
+            if (i.Args.Count() < 1) {
+                vm.RaiseError("Tried to get a variable argument without an argument.");
+                return;
+            }
+            if (i.Args[0].Type != ValueTypes.STRING) {
+                vm.RaiseError("Tried to get a variable argument with a non-string argument.");
+                return;
+            }
+            Environment cEnv = vm.CurrentEnvironment;
+            while (cEnv != null) {
+                if (cEnv.Exists(i.Args[0].String_Value)) {
+                    vm.Stack.Push(cEnv.Get(i.Args[0].String_Value));
+                    return;
+                }
+                cEnv = cEnv.Parent;
+            }
+            vm.RaiseError("Could not find variable " + i.Args[0].String_Value + " in any environment");
+            return;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
+        internal static void SetVar(VirtualMachine vm, Instruction i) {
+            if (i.Args.Count() < 1) {
+                vm.RaiseError("Tried to set a variable argument without an argument.");
+                return;
+            }
+            Value vName = i.Args[0];
+            Value vValue = Value.New(ValueTypes.NULL);
+            if(i.Args.Count() > 1){
+                vValue = i.Args[1];
+            } else {
+                vValue = vm.Stack.Shift();                
+            }
+            if (vName.Type != ValueTypes.STRING || vName.String_Value == null || vName.String_Value == "") {
+                vm.RaiseError("Tried to use a non-string value for a variable argument name");
+                return;
+            }
+
+            Environment e = vm.CurrentEnvironment;
+            while (e != null) {
+                if (e.Exists(vName.String_Value)) {
+                    break;
+                }
+                e = e.Parent;
+            }
+            if (e == null) {
+                e = vm.CurrentEnvironment;
+            } else {
+                if (i.Type == OpCodeTypes.TYPESET) {
+                    Value typeValue = e.Get(vName.String_Value);
+                    if (typeValue.Type != ValueTypes.ARRAY && typeValue.Type != vValue.Type) {
+                        vm.RaiseError("Tried to redefine type for variable " + vName.String_Value + ": value is " + vm.Get(vName.String_Value).Type + ", new value is " + vValue.Type);
+                        return;
+                    }
+                }
+            }           
+            e.Set(vName.String_Value, vValue);
+            vm.Stack.Push(vName);
         }
 
         /// <summary>

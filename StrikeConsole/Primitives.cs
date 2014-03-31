@@ -9,6 +9,9 @@ using System.IO;
 namespace StrikeConsole {
     public class Primitives {
         public List<FileStream> files = new List<FileStream>();
+        Random rand = new Random();
+
+        
 
         internal byte[] GetBytes(string str) {
             byte[] bytes = new byte[str.Length * sizeof(char)];
@@ -20,6 +23,12 @@ namespace StrikeConsole {
             char[] chars = new char[bytes.Length / sizeof(char)];
             System.Buffer.BlockCopy(bytes, 0, chars, 0, bytes.Length);
             return new string(chars);
+        }
+
+        public void GetRandom(VirtualMachine vm, Instruction i, List<Value> args) {            
+            Value v = Value.New(ValueTypes.INT_32);
+            v.Int32_Value = rand.Next(args[0].Int32_Value, args[1].Int32_Value);
+            vm.Stack.Push(v);
         }
 
         public void OpenFileWrite(VirtualMachine vm, Instruction i, List<Value> args) {

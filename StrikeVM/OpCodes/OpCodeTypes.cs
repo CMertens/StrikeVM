@@ -14,8 +14,7 @@ namespace StrikeVM {
         SUBTRACT = 3,
         MULTIPLY = 4,
         DIVIDE = 5,
-        MODULO = 6,
-            
+        MODULO = 6,            
 
         EQ = 20,
         NEQ = 21,
@@ -45,6 +44,9 @@ namespace StrikeVM {
         /// </summary>
         DUPE = 53,
 
+        /// <summary>
+        /// Checks whether a variable exists
+        /// </summary>
         EXISTS = 58,
 
         /// <summary>
@@ -91,6 +93,9 @@ namespace StrikeVM {
         SET_NEAR = 71,
 
         TYPESET_NEAR = 72,
+
+
+        DELETE = 73,
 
         /// <summary>
         /// Pushes boolean indicating whether the top two values on the stack are of the same type.
@@ -144,6 +149,14 @@ namespace StrikeVM {
         /// that the types match.
         /// </summary>
         TYPESETPROP = 115,
+
+        DELETEPROP = 116,
+
+        GET_VAR = 117,
+
+        SET_VAR = 118,
+
+        TYPESET_VAR = 119,
 
         /// <summary>
         /// 
@@ -201,7 +214,7 @@ namespace StrikeVM {
         CALL_BLOCK = 750,
         CALL_PRIMITIVE = 751,
         CALL_CLOSURE = 752,
-
+        
 
         /// <summary>
         /// Uses a string arg[0] to indicate a code location that can be label-jumped to. Label positions are cached

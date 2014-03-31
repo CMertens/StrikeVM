@@ -8,8 +8,6 @@ using StrikeAsm;
 namespace StrikeConsole {
     class StrikeConsole {
 
-        
-
         static void Main(string[] args) {
             if (args.Count() < 1 || System.IO.File.Exists(args[0]) == false) {
                 Console.Write("Filename>");
@@ -17,8 +15,10 @@ namespace StrikeConsole {
                 args[0] = Console.ReadLine();
             }
             Assembler asm = new Assembler();
-            String code = System.IO.File.ReadAllText(args[0]);
+            Console.WriteLine("Compiling...");
+            String code = System.IO.File.ReadAllText(args[0]);            
             List<Instruction> bc = asm.Compile(code, false);
+            Console.WriteLine("Executing.");
             VirtualMachine vm = new VirtualMachine(bc);
             Primitives prims = new Primitives();
 
@@ -30,13 +30,20 @@ namespace StrikeConsole {
             vm.AddPrimitive("<IO.File.Write>", prims.WriteToFile, new List<Value>() { Value.New(ValueTypes.STRING), Value.New(ValueTypes.INT_32) });
             vm.AddPrimitive("<IO.File.Close>", prims.CloseFile, new List<Value>() { Value.New(ValueTypes.INT_32) });
 
+            vm.AddPrimitive("<Random.GetInt>", prims.GetRandom, new List<Value>() { Value.New(ValueTypes.INT_32), Value.New(ValueTypes.INT_32) });
+
             vm.Start();
             
             // We've actually run a full cycle here, but this
             // indicates 
             while (vm.CanBeRestarted || vm.IsAborted) {
                 if (vm.IsDebugging || vm.IsAborted) {
-                    Console.WriteLine("Debug mode at PC " + vm.ProgramCounter + " (" + vm.DebugText + ")");
+                    if (vm.IsAborted) {
+                        Console.Write("Panic at PC " + vm.ProgramCounter + ": ");
+                        vm.DumpErrors(Console.Out);
+                    } else {
+                        Console.WriteLine("Debug mode at PC " + vm.ProgramCounter + " (" + vm.DebugText + ")");
+                    }
                     bool debugMode = true;
                     while (debugMode) {
                         Console.Write(">");

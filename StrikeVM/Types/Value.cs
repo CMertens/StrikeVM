@@ -27,6 +27,89 @@ namespace StrikeVM {
         public Guid Guid_Value;
         public DateTimeOffset DateTime_Value;
 
+
+        /// <summary>
+        /// Duplicates a value. Pass-by-ref data is copied by reference, unlike Clone.
+        /// </summary>
+        /// <returns></returns>
+        public Value Dupe() {
+            Value v = this;
+            return v;
+        }
+
+        /// <summary>
+        /// Clones a Value. Because Value is a struct, and structs are pass-by-value, we only really
+        /// worry about a subset of situations where we have pass-by-ref data inside the Value.
+        /// </summary>
+        /// <returns></returns>
+        public Value Clone() {
+            Value v = this; // Structs are pass-by-val
+            switch (this.Type) {
+                case ValueTypes.ANY_TYPE:
+                    break;
+                case ValueTypes.ARRAY:
+                    ValueList lv = new ValueList();
+                    foreach (Value av in this.Array_Value) {
+                        lv.Add(av.Dupe());
+                    }
+                    v.Array_Value = lv;
+                    break;
+                case ValueTypes.BOOLEAN:
+                    break;
+                case ValueTypes.BYTE:
+                    break;
+                case ValueTypes.CODE_BLOCK:
+                    CodeBlock cb = new CodeBlock();
+                    cb.Closure = this.CodeBlock_Value.Closure;
+                    cb.EndProgramCounter = this.CodeBlock_Value.EndProgramCounter;
+                    cb.StartProgramCounter = this.CodeBlock_Value.StartProgramCounter;
+                    List<Value> arity = new List<Value>();
+                    foreach (Value av in this.CodeBlock_Value.ArgumentsArity) {
+                        arity.Add(av.Dupe());
+                    }
+                    v.CodeBlock_Value.ArgumentsArity = arity;
+                    v.CodeBlock_Value = cb;
+                    break;
+                case ValueTypes.DATETIME:
+                    break;
+                case ValueTypes.DECIMAL:
+                    break;
+                case ValueTypes.DOUBLE:
+                    break;
+                case ValueTypes.EMPTY:
+                    break;
+                case ValueTypes.FLOAT:
+                    break;
+                case ValueTypes.GUID:
+                    break;
+                case ValueTypes.INT_16:
+                    break;
+                case ValueTypes.INT_32:
+                    break;
+                case ValueTypes.INT_64:
+                    break;
+                case ValueTypes.NULL:
+                    break;
+                case ValueTypes.OBJECT:
+                    break;
+                case ValueTypes.REFERENCE:
+                    Reference r = new Reference();
+                    r.HomeEnvironment = this.Reference_Value.HomeEnvironment;
+                    r.Name = this.Reference_Value.Name;
+                    v.Reference_Value = r;
+                    break;
+                case ValueTypes.STRING:
+                    break;
+                case ValueTypes.UINT_16:
+                    break;
+                case ValueTypes.UINT_32:
+                    break;
+                case ValueTypes.UINT_64:
+                    break;
+            }
+            return v;
+        }
+
         public static Value New(ValueTypes vt){
             Value v = new Value();
             v.Type = vt;

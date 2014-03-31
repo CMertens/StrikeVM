@@ -23,6 +23,9 @@ namespace StrikeVM {
                 throw new Exception("Tried to run off the edge of the stack");
             }
         }
+
+
+
         public void Pop(int num) {
             Position = Position - num;
         }
@@ -32,6 +35,10 @@ namespace StrikeVM {
             T v = this[Position];
             Position--;
             return v;
+        }
+
+        public T Peek() {
+            return this[Position];
         }
 
         public void Swap() {
