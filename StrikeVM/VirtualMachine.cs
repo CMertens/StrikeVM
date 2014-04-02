@@ -37,6 +37,10 @@ namespace StrikeVM {
         // list of return addresses used for code block and closure calls
         internal List<int> ReturnAddresses;
 
+        // Every time we call a code block/closure, we push its CodeBlock onto here,
+        // for debugging support and to support tail calls as a particular operation.
+        internal List<CodeBlock> FunctionCallList;
+
         // When processing text, if we encounter a code block or closure start,
         // we keep state during its definition in this list.
         internal CodeBlock CodeBlockBeingDefined;
@@ -131,6 +135,7 @@ namespace StrikeVM {
 
         public VirtualMachine() {            
             ReturnAddresses = new List<int>();
+            FunctionCallList = new List<CodeBlock>();
             CurrentEnvironment = new Environment();
             ByteCode = new CodeMemory();
             Errors = new List<string>();
@@ -148,6 +153,7 @@ namespace StrikeVM {
 
         public VirtualMachine(IEnumerable<Instruction> ins) {
             ReturnAddresses = new List<int>();
+            FunctionCallList = new List<CodeBlock>();
             CurrentEnvironment = new Environment();
             ByteCode = new CodeMemory(ins);
             Errors = new List<string>();
@@ -247,16 +253,21 @@ namespace StrikeVM {
             return env;
         }
 
-        public void PushEnvironment() {
+        public void DestroyClosure(Environment env) {
+            Environments.Remove(env);
+        }
+
+        public Environment PushCurrentEnvironment() {
             Environment env = new Environment();
             numberOfEnvironmentsCreated++;
             env.EnvironmentID = numberOfEnvironmentsCreated;
             env.Parent = CurrentEnvironment;
             CurrentEnvironment = env;
             Environments.Add(env);
+            return env;
         }
 
-        public void PopEnvironment() {
+        public void PopCurrentEnvironment() {
             Environment env = CurrentEnvironment;
             CurrentEnvironment = env.Parent;
             Environments.Remove(env);

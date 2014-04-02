@@ -91,6 +91,9 @@
     <Content Include="StringSet.asm">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="TailCall.asm">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="test_array.asm">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

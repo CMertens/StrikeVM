@@ -189,6 +189,9 @@ namespace StrikeVM {
         ARRAY_SET = 203,
 
         STRING_SPLICE = 204,
+        STRING_APPEND = 205,
+
+        STACK_SIZE = 300,
 
         /// <summary>
         /// Pushes a return address onto the return stack, using arg[0] as a relative offset.
@@ -205,16 +208,8 @@ namespace StrikeVM {
         /// </summary>
         RETURN_CLOSURE = 511,
 
-        START_BLOCK = 700,
-        END_BLOCK = 701,
 
-        START_CLOSURE = 702,
-        END_CLOSURE = 703,
-
-        CALL_BLOCK = 750,
-        CALL_PRIMITIVE = 751,
-        CALL_CLOSURE = 752,
-        
+        RETURN_FUNCTION = 512,
 
         /// <summary>
         /// Uses a string arg[0] to indicate a code location that can be label-jumped to. Label positions are cached
@@ -251,6 +246,21 @@ namespace StrikeVM {
         /// 
         /// </summary>
         CLOCK_UTC_TICKS = 600,
+
+        START_BLOCK = 700,
+        END_BLOCK = 701,
+
+        START_CLOSURE = 702,
+        END_CLOSURE = 703,
+
+        START_FUNCTION = 704,
+        END_FUNCTION = 705,
+
+        CALL_BLOCK = 750,
+        CALL_PRIMITIVE = 751,
+        CALL_CLOSURE = 752,
+        CALL_FUNCTION = 753,
+        TAIL_CALL = 754,
 
         /// <summary>
         /// Tells the VM to break into debug mode.

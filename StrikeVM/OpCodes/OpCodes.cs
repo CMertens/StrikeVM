@@ -13,15 +13,15 @@ namespace StrikeVM
             if (vm.CodeBlockBeingDefined != null) { // We're scanning this opcode as the text of a codeblock, not for execution
                 // We've encountered a close command without having processing a start command as text. We want to process
                 // this as an opcode.
-                if (vm.CodeBlocksAsText == 0 && (i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_CLOSURE)) {
+                if (vm.CodeBlocksAsText == 0 && (i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_CLOSURE || i.Type == OpCodeTypes.END_FUNCTION)) {
                     // Just making the logic clear; do nothing and fall through to the switch monster
                 } else {
                     // Increment the number of codeblocks we've encountered as text
-                    if (i.Type == OpCodeTypes.START_BLOCK || i.Type == OpCodeTypes.START_CLOSURE) {
+                    if (i.Type == OpCodeTypes.START_BLOCK || i.Type == OpCodeTypes.START_CLOSURE || i.Type == OpCodeTypes.START_FUNCTION) {
                         vm.CodeBlocksAsText++;
                     }
                     // Decrement the number of encountered codeblocks
-                    if ((i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_CLOSURE) && vm.CodeBlocksAsText > 0) {
+                    if ((i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_CLOSURE || i.Type == OpCodeTypes.END_FUNCTION) && vm.CodeBlocksAsText > 0) {
                         vm.CodeBlocksAsText--;
                     }
                     // The opcode being processed should not be executed; it's inside a 
@@ -289,6 +289,10 @@ namespace StrikeVM
                     OpCodes.ReturnClosure(vm, i);
                     break;
 
+                case OpCodeTypes.RETURN_FUNCTION:
+                    OpCodes.ReturnFunction(vm, i);
+                    break;
+
                 case OpCodeTypes.SET_RETURN_ABSOLUTE:
                 case OpCodeTypes.SET_RETURN_RELATIVE:
                     OpCodes.SetReturn(vm, i);
@@ -304,6 +308,7 @@ namespace StrikeVM
 
                 case OpCodeTypes.START_CLOSURE:
                 case OpCodeTypes.START_BLOCK:
+                case OpCodeTypes.START_FUNCTION:
                     OpCodes.StartBlock(vm, i);
                     vm.ByteCode.ProgramCounter++;
                     vm.Ticks++;
@@ -311,6 +316,7 @@ namespace StrikeVM
 
                 case OpCodeTypes.END_BLOCK:
                 case OpCodeTypes.END_CLOSURE:
+                case OpCodeTypes.END_FUNCTION:
                     OpCodes.EndBlock(vm, i);
                     vm.ByteCode.ProgramCounter++;
                     vm.Ticks++;
@@ -318,6 +324,7 @@ namespace StrikeVM
                
                 case OpCodeTypes.CALL_CLOSURE:
                 case OpCodeTypes.CALL_BLOCK:
+                case OpCodeTypes.CALL_FUNCTION:
                     OpCodes.CallFunction(vm, i);
                     vm.Ticks++;
                     break;
@@ -325,6 +332,11 @@ namespace StrikeVM
                 case OpCodeTypes.CALL_PRIMITIVE:
                     OpCodes.CallPrimitive(vm, i);
                     vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.TAIL_CALL:
+                    OpCodes.CallTailCall(vm, i);                    
                     vm.Ticks++;
                     break;
 
@@ -382,6 +394,18 @@ namespace StrikeVM
 
                 case OpCodeTypes.STRING_SPLICE:
                     OpCodes.SpliceString(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.STRING_APPEND:
+                    OpCodes.AppendString(vm, i);
+                    vm.ByteCode.ProgramCounter++;
+                    vm.Ticks++;
+                    break;
+
+                case OpCodeTypes.STACK_SIZE:
+                    OpCodes.StackSize(vm, i);
                     vm.ByteCode.ProgramCounter++;
                     vm.Ticks++;
                     break;
@@ -558,7 +582,7 @@ namespace StrikeVM
         /// to parent scope and the latter will attempt to return context to saved scope. Mixing up the two will
         /// cause memory corruption and probable execution failure.
         /// 
-        /// Note that we push arguments for a call from n...0 (end), and recovered the same way, as we shift them and 
+        /// Note that we push arguments for a call from 0...n (end), and recovered the same way, as we shift them and 
         /// move them to the new stack, where they will be removed in LIFO order.
         /// </summary>
         /// <param name="vm"></param>
@@ -575,23 +599,27 @@ namespace StrikeVM
                 return;
             }
 
-            if (i.Type == OpCodeTypes.CALL_BLOCK && callable.CodeBlock_Value.Closure != null) {
+            if ( (i.Type == OpCodeTypes.CALL_BLOCK || i.Type == OpCodeTypes.CALL_FUNCTION) && callable.CodeBlock_Value.Closure != null) {
                 vm.RaiseError("Tried to call a closure with dynamic scope.");
                 return;
             }
 
             // Create a new environment and shift arguments onto the stack
             Environment env = null;
-            if (i.Type == OpCodeTypes.CALL_BLOCK) { // dynamically-scoped
-                env = new Environment();
-                env.Parent = vm.CurrentEnvironment;
-            } else if (i.Type == OpCodeTypes.CALL_CLOSURE) { // lexically-scoped (closure)
+            if (i.Type == OpCodeTypes.CALL_BLOCK) {             // dynamically-scoped
+                env = vm.PushCurrentEnvironment();
+            } else if (i.Type == OpCodeTypes.CALL_FUNCTION) {   // non-closure lexical scope (function)
+                env = vm.PushClosure();
+            } else if (i.Type == OpCodeTypes.CALL_CLOSURE) {    // lexically-scoped (closure)
                 env = callable.CodeBlock_Value.Closure;
             } else {
                 vm.RaiseError("Attempt to call block or closure with unknown opcode " + i.Type);
                 return;
             }
-            foreach (Value v in callable.CodeBlock_Value.ArgumentsArity) {
+
+            
+            for (int aInc = callable.CodeBlock_Value.ArgumentsArity.Count() - 1; aInc >= 0; aInc--) {
+                Value v = callable.CodeBlock_Value.ArgumentsArity[aInc];
                 Value arg = vm.Stack.Shift();
                 if (v.Type != ValueTypes.ANY_TYPE && arg.Type != v.Type) {
                     vm.RaiseError("Argument arity error: expected type " + arg.Type + ", saw " + v.Type);
@@ -602,11 +630,52 @@ namespace StrikeVM
 
             // If we're operating in lexical scope, save the current environment so we can return
             // back to it.
-            if (callable.CodeBlock_Value.Closure != null) {
+            if (i.Type == OpCodeTypes.CALL_CLOSURE || i.Type == OpCodeTypes.CALL_FUNCTION) {
                 vm.ClosureStack.Add(vm.CurrentEnvironment);
             }
+
+            // Finally, add the code block to the VM's function call list. We only use this to
+            // enable tail calls so we don't lose tex start locations and function arity
+            vm.FunctionCallList.Add(callable.CodeBlock_Value);
+
             vm.CurrentEnvironment = env;
             vm.ByteCode.ProgramCounter = callable.CodeBlock_Value.StartProgramCounter;
+        }
+
+
+        /// <summary>
+        /// When TAIL_CALL is invoked, the VM inspects the top CodeBlock in the FunctionCallList,
+        /// pops the argument off the local stack, clears the local stack, clears local arguments,
+        /// pushes the arguments back onto the stack, and then moves the VM PC to the top of the
+        /// current CodeBlock. This allows for stack-free(ish) recursion.
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
+        internal static void CallTailCall(VirtualMachine vm, Instruction i) {
+            if (vm.FunctionCallList.Count() < 1) {
+                vm.RaiseError("Attempt to invoke tail call outside of a code block.");
+                return;
+            }
+            CodeBlock cb = vm.FunctionCallList.Last();
+            List<Value> argStack = new List<Value>();
+            for (int aInc = cb.ArgumentsArity.Count() - 1; aInc >= 0; aInc--) {
+                Value v = cb.ArgumentsArity[aInc];
+                Value arg = vm.Stack.Shift();
+                if (v.Type != ValueTypes.ANY_TYPE && arg.Type != v.Type) {
+                    vm.RaiseError("Argument arity error: expected type " + arg.Type + ", saw " + v.Type);
+                    return;
+                }
+                argStack.Add(arg);
+            }
+            vm.CurrentEnvironment.Stack.Clear();
+            vm.CurrentEnvironment.Variables.Clear();
+            vm.CurrentEnvironment.Memory = 0;
+            vm.CurrentEnvironment.Prototypes.Clear();
+            vm.CurrentEnvironment.Objects.Clear();
+            foreach (Value v in argStack) {
+                vm.Stack.Push(v);
+            }
+            vm.ByteCode.ProgramCounter = cb.StartProgramCounter;
         }
 
         /// <summary>
@@ -675,8 +744,8 @@ namespace StrikeVM
             if (i.Type == OpCodeTypes.END_CLOSURE && call.Closure == null) {
                 vm.RaiseError("Tried to end a closure with a null environment.");
                 return;
-            } else if (i.Type == OpCodeTypes.END_BLOCK && call.Closure != null) {
-                vm.RaiseError("Tried to end a code block with a closure.");
+            } else if ( (i.Type == OpCodeTypes.END_BLOCK || i.Type == OpCodeTypes.END_FUNCTION) && call.Closure != null) {
+                vm.RaiseError("Tried to end a code block or function with a closure.");
                 return;
             }
             call.EndProgramCounter = vm.ByteCode.ProgramCounter-1;
@@ -724,12 +793,10 @@ namespace StrikeVM
                 Value val = vm.Stack.Shift();
                 vm.CurrentEnvironment.Parent.Stack.Push(val);
             }
-            Environment oldEnviro = vm.CurrentEnvironment;
-            vm.CurrentEnvironment = oldEnviro.Parent;
-            // Remove the scope so it can get GC'd (and won't be serialized)
-            vm.Environments.Remove(oldEnviro);
+            vm.PopCurrentEnvironment();
             vm.ByteCode.ProgramCounter = vm.ReturnAddresses[vm.ReturnAddresses.Count() - 1];
-            vm.ReturnAddresses.RemoveAt(vm.ReturnAddresses.Count() - 1);            
+            vm.ReturnAddresses.RemoveAt(vm.ReturnAddresses.Count() - 1);
+            vm.FunctionCallList.RemoveAt(vm.FunctionCallList.Count() - 1);
         }
 
         /// <summary>
@@ -740,6 +807,7 @@ namespace StrikeVM
         /// <param name="vm"></param>
         /// <param name="i"></param>
         internal static void ReturnClosure(VirtualMachine vm, Instruction i) {
+            
             if (vm.ClosureStack.Count() < 1) {
                 vm.RaiseError("Attempted to return a closure without any outer context.");
                 return;
@@ -754,9 +822,39 @@ namespace StrikeVM
             vm.CurrentEnvironment = enviro;
             vm.ByteCode.ProgramCounter = vm.ReturnAddresses[vm.ReturnAddresses.Count() - 1];
             vm.ReturnAddresses.RemoveAt(vm.ReturnAddresses.Count() - 1);
+            vm.FunctionCallList.RemoveAt(vm.FunctionCallList.Count() - 1);
             return;
         }
 
+        /// <summary>
+        /// This is similar to the way we handle closures, except functions don't have durable
+        /// state, so we destroy the environment after using.
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <param name="i"></param>
+        internal static void ReturnFunction(VirtualMachine vm, Instruction i) {
+
+            if (vm.ClosureStack.Count() < 1) {
+                vm.RaiseError("Attempted to return a function without any outer context.");
+                return;
+            }
+            Environment temporaryEnv = vm.CurrentEnvironment;
+            Environment enviro = vm.ClosureStack.Last();
+            vm.ClosureStack.RemoveAt(vm.ClosureStack.Count() - 1);
+
+            if (vm.Stack.Count() > 0) {
+                Value val = vm.Stack.Shift();
+                enviro.Stack.Push(val);
+            }
+            vm.CurrentEnvironment = enviro;
+            vm.ByteCode.ProgramCounter = vm.ReturnAddresses[vm.ReturnAddresses.Count() - 1];
+            vm.ReturnAddresses.RemoveAt(vm.ReturnAddresses.Count() - 1);
+            vm.FunctionCallList.RemoveAt(vm.FunctionCallList.Count() - 1);
+
+            vm.DestroyClosure(temporaryEnv);
+
+            return;
+        }
 
         /// <summary>
         /// 
@@ -1245,6 +1343,20 @@ namespace StrikeVM
             }
             vm.Stack.Push(vArray);
             return;
+        }
+
+        internal static void StackSize(VirtualMachine vm, Instruction i) {
+            Value v = Value.New(ValueTypes.INT_32, (vm.Stack.Position + 1));
+            vm.Stack.Push(v);
+            return;
+        }
+
+        internal static void AppendString(VirtualMachine vm, Instruction i) {
+            Value vSecond = vm.Stack.Shift();
+            Value vFirst = vm.Stack.Shift();
+            Value ret = Value.New(ValueTypes.STRING);
+            ret.String_Value = vFirst.Get().ToString() + vSecond.Get().ToString();
+            vm.Stack.Push(ret);
         }
 
         internal static void SpliceString(VirtualMachine vm, Instruction i) {
