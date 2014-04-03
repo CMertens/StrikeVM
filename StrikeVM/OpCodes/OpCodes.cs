@@ -667,6 +667,8 @@ namespace StrikeVM
                 }
                 argStack.Add(arg);
             }
+
+            // Clear out the current environment so we can reuse it.
             vm.CurrentEnvironment.Stack.Clear();
             vm.CurrentEnvironment.Variables.Clear();
             vm.CurrentEnvironment.Memory = 0;
@@ -795,7 +797,11 @@ namespace StrikeVM
             }
             vm.PopCurrentEnvironment();
             vm.ByteCode.ProgramCounter = vm.ReturnAddresses[vm.ReturnAddresses.Count() - 1];
+
+            // Pop off this return address
             vm.ReturnAddresses.RemoveAt(vm.ReturnAddresses.Count() - 1);
+
+            // Pop off the CodeBlock saved for this function
             vm.FunctionCallList.RemoveAt(vm.FunctionCallList.Count() - 1);
         }
 

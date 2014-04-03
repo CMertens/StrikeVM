@@ -163,6 +163,7 @@ namespace StrikeVM {
         /// </summary>
         LENGTH = 150,
 
+        CONVERT = 151,
 
         /// <summary>
         /// Appends a single value to the end of an array.
@@ -246,6 +247,7 @@ namespace StrikeVM {
         /// 
         /// </summary>
         CLOCK_UTC_TICKS = 600,
+
 
         START_BLOCK = 700,
         END_BLOCK = 701,
